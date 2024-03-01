@@ -1,0 +1,17 @@
+{
+  "name": "editor",
+  "module": "index.ts",
+  "scripts": {
+    "dev": "bun run index.ts index.ts"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "type": "module",
+  "dependencies": {
+    "ansi-escapes": "^6.2.0"
+  }
+}
