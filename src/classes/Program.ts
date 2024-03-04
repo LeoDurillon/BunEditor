@@ -1,11 +1,13 @@
 import ansiEscapes from "ansi-escapes";
 import { BunFile } from "bun";
 import { mkdir } from "node:fs/promises";
-import * as Action from "../services/action";
-import Terminal from "./terminal";
+import bindings from "../bindings/bindings";
+import ActionKey from "../bindings/key/ActionKey";
+import ArrowKey from "../bindings/key/ArrowKey";
+import SpecialKey from "../bindings/key/SpecialKey";
+import Terminal from "./Terminal";
 
 export default class Program {
-  public mode: "visual" | "select" | "insert";
   public appFolder = "./test-editor";
   public logFile: BunFile;
 
@@ -18,8 +20,6 @@ export default class Program {
   public terminal: Terminal | undefined;
 
   constructor(file: BunFile) {
-    this.mode = "visual";
-
     mkdir(this.appFolder, { recursive: true });
     this.logFile = Bun.file(`${this.appFolder}/log.txt`);
 
@@ -44,7 +44,7 @@ export default class Program {
     this.text = await this.getText(this.file);
     this.originalFile = this.mergeText(this.text);
 
-    this.terminal = new Terminal(this.write, this.text);
+    this.terminal = new Terminal(this.write, this.text, this);
 
     this.terminal.draw(true);
 
@@ -54,40 +54,20 @@ export default class Program {
   }
 
   async getKey() {
-    const direction: Record<string, "right" | "down" | "left" | "up"> = {
-      l: "right",
-      k: "down",
-      j: "left",
-      i: "up",
-    };
-
     for await (const chunk of this.stream) {
       if (!this.terminal) throw Error("Terminal should exists now");
-      const code = chunk as Uint8Array;
+      let value: string | number = Buffer.from(chunk).toString();
+      if (chunk[0] === 127) value = "_";
+      if (parseInt(value, 10)) value = parseInt(value, 10);
+      if (value in ActionKey)
+        value = ActionKey[value as keyof typeof ActionKey];
+      if (value in SpecialKey)
+        value = SpecialKey[value as keyof typeof SpecialKey];
+      if (value in ArrowKey) value = ArrowKey[value as keyof typeof ArrowKey];
+      if (value in SpecialKey)
+        value = SpecialKey[value as keyof typeof SpecialKey];
 
-      switch (code[0]) {
-        case 27: {
-          this.kill();
-          break;
-        }
-        case 127: {
-          this.terminal.remove();
-          break;
-        }
-        default: {
-          const chunkText =
-            code[0] < 27
-              ? "^" + Buffer.from([chunk[0] + 64]).toString()
-              : Buffer.from(chunk).toString();
-
-          if (chunkText.includes("^"))
-            Action.control(chunkText.slice(1), this.terminal);
-          else if (chunkText in direction)
-            this.terminal.move(direction[chunkText], true);
-          else this.terminal.sendKey(chunkText);
-          break;
-        }
-      }
+      this.terminal.parseKey(bindings[this.terminal.mode][value]);
     }
   }
 
@@ -107,6 +87,49 @@ export default class Program {
     }
 
     this.kill(false);
+  }
+
+  action(
+    value:
+      | "exit"
+      | "up"
+      | "down"
+      | "left"
+      | "right"
+      | "screenUp"
+      | "screenDown"
+      | "wordLeft"
+      | "wordRight"
+      | undefined
+  ) {
+    if (!this.terminal) throw Error("Terminal should be started now");
+
+    switch (value) {
+      case "exit": {
+        this.kill(true);
+        break;
+      }
+      case "up": {
+        this.terminal.move("up");
+        break;
+      }
+      case "down": {
+        this.terminal.move("down");
+        break;
+      }
+      case "right": {
+        this.terminal.move("right");
+        break;
+      }
+      case "left": {
+        this.terminal.move("left");
+        break;
+      }
+      default: {
+        return;
+      }
+    }
+    this.terminal.draw();
   }
 
   kill(clear: boolean = true) {

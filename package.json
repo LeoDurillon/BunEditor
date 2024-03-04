@@ -2,7 +2,7 @@
   "name": "editor",
   "module": "index.ts",
   "scripts": {
-    "dev": "bun run index.ts index.ts"
+    "dev": "bun run --watch index.ts index.ts"
   },
   "devDependencies": {
     "bun-types": "latest"
