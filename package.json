@@ -12,6 +12,7 @@
   },
   "type": "module",
   "dependencies": {
-    "ansi-escapes": "^6.2.0"
+    "ansi-escapes": "^6.2.0",
+    "clipboardy": "^4.0.0"
   }
 }

@@ -30,4 +30,19 @@ export default class Cursor {
     this.posy = y;
     return this.set();
   }
+
+  posCalc(pos: number, length: number[]) {
+    let base = pos;
+
+    for (let i = 0; i < length.length; i++) {
+      if (base > 0 && base <= length[i]) {
+        this.posy = i;
+        this.posx = base - 1;
+      }
+
+      base -= length[i];
+    }
+
+    this.set();
+  }
 }

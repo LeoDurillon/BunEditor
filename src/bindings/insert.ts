@@ -23,7 +23,7 @@ export default {
   return: ["action:remove"],
   ctrlReturn: undefined,
   ctrlAltReturn: undefined,
-  enter: ["insert:\r"],
+  enter: ["insert:\n"],
   altEnter: undefined,
   tab: ["insert:\t"],
   shiftTab: undefined,

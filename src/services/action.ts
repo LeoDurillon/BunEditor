@@ -1,8 +1,49 @@
+import clipboard from "clipboardy";
 import Terminal from "../classes/Terminal";
+import * as Text from "../services/text";
+export function copy(terminal: Terminal) {
+  clipboard.writeSync(terminal.selection);
+  terminal.selection = "";
+}
 
-export function copy(terminal: Terminal) {}
+export function paste(terminal: Terminal) {
+  const value = Text.Split(clipboard.readSync());
+  terminal.text = [
+    ...terminal.text.slice(0, terminal.screenOffsetY + terminal.row),
+    ...value.map((e, i) => {
+      if (
+        terminal.col !==
+        terminal.text.slice(terminal.screenOffsetY)[terminal.row].length
+      ) {
+        value[i + 1] = [
+          ...(!!value[i + 1] ? value[i + 1] : []),
+          ...terminal.text
+            .slice(terminal.screenOffsetY)
+            [terminal.row].slice(terminal.col),
+        ];
+        return [
+          ...terminal.text
+            .slice(terminal.screenOffsetY)
+            [terminal.row].slice(0, terminal.col),
+          ...e,
+        ];
+      } else {
+        return [
+          ...terminal.text.slice(terminal.screenOffsetY + i)[terminal.row],
+          ...e,
+        ];
+      }
+    }),
+    ...terminal.text.slice(
+      terminal.screenOffsetY + terminal.row + value.length
+    ),
+  ];
 
-export function paste(terminal: Terminal) {}
+  for (let i = 1; i < value.length - 1; i++) {
+    terminal.move("down");
+  }
+  terminal.col = terminal.text[terminal.screenOffsetY + terminal.row].length;
+}
 
 export function remove(terminal: Terminal) {
   const text = terminal.text.slice(terminal.screenOffsetY)[terminal.row];

@@ -4,6 +4,7 @@ import { mkdir } from "node:fs/promises";
 import bindings from "../bindings/bindings";
 import ActionKey from "../bindings/key/ActionKey";
 import ArrowKey from "../bindings/key/ArrowKey";
+import Letter from "../bindings/key/Letter";
 import SpecialKey from "../bindings/key/SpecialKey";
 import Terminal from "./Terminal";
 
@@ -12,7 +13,7 @@ export default class Program {
   public logFile: BunFile;
 
   public file: BunFile;
-  public text: Array<Array<string>>;
+  public text: Buffer;
   public originalFile: string;
 
   public stream: ReadableStream<any>;
@@ -24,7 +25,7 @@ export default class Program {
     this.logFile = Bun.file(`${this.appFolder}/log.txt`);
 
     this.file = file;
-    this.text = [];
+    this.text = Buffer.from("");
     this.originalFile = "";
 
     this.stream = Bun.stdin.stream();
@@ -32,21 +33,14 @@ export default class Program {
     this.terminal = undefined;
   }
 
-  mergeText(value: Array<Array<string>>) {
-    return value.map((line) => line.join("")).join("\n");
-  }
-
-  async getText(file: BunFile) {
-    return (await file.text()).split("\n").map((line) => [...line]);
-  }
-
   async start() {
-    this.text = await this.getText(this.file);
-    this.originalFile = this.mergeText(this.text);
+    const text = await this.file.text();
+    this.text = Buffer.from(text);
+    this.originalFile = text;
 
     this.terminal = new Terminal(this.write, this.text, this);
 
-    this.terminal.draw(true);
+    this.terminal.draw();
 
     while (true) {
       await this.getKey();
@@ -57,6 +51,7 @@ export default class Program {
     for await (const chunk of this.stream) {
       if (!this.terminal) throw Error("Terminal should exists now");
       let value: string | number = Buffer.from(chunk).toString();
+
       if (chunk[0] === 127) value = "_";
       if (parseInt(value, 10)) value = parseInt(value, 10);
       if (value in ActionKey)
@@ -64,8 +59,7 @@ export default class Program {
       if (value in SpecialKey)
         value = SpecialKey[value as keyof typeof SpecialKey];
       if (value in ArrowKey) value = ArrowKey[value as keyof typeof ArrowKey];
-      if (value in SpecialKey)
-        value = SpecialKey[value as keyof typeof SpecialKey];
+      if (value in Letter) value = Letter[value as keyof typeof Letter];
 
       this.terminal.parseKey(bindings[this.terminal.mode][value]);
     }
@@ -87,49 +81,6 @@ export default class Program {
     }
 
     this.kill(false);
-  }
-
-  action(
-    value:
-      | "exit"
-      | "up"
-      | "down"
-      | "left"
-      | "right"
-      | "screenUp"
-      | "screenDown"
-      | "wordLeft"
-      | "wordRight"
-      | undefined
-  ) {
-    if (!this.terminal) throw Error("Terminal should be started now");
-
-    switch (value) {
-      case "exit": {
-        this.kill(true);
-        break;
-      }
-      case "up": {
-        this.terminal.move("up");
-        break;
-      }
-      case "down": {
-        this.terminal.move("down");
-        break;
-      }
-      case "right": {
-        this.terminal.move("right");
-        break;
-      }
-      case "left": {
-        this.terminal.move("left");
-        break;
-      }
-      default: {
-        return;
-      }
-    }
-    this.terminal.draw();
   }
 
   kill(clear: boolean = true) {

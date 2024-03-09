@@ -1,57 +1,39 @@
-import Terminal from "../classes/Terminal";
+import State from "../classes/State";
 
-export function down(terminal: Terminal) {
-  if (terminal.row === terminal.height - 1) return;
-  if (
-    terminal.col >=
-    terminal.text.slice(terminal.screenOffsetY)[terminal.row].length
-  ) {
-    terminal.col = terminal.text.slice(terminal.screenOffsetY)[
-      terminal.row + 1
-    ].length;
-  }
-  if (
-    terminal.screenOffsetY + terminal.height + 1 <= terminal.text.length &&
-    terminal.row + 1 > Math.floor((process.stdout.rows - 3) / 2)
-  ) {
-    ++terminal.screenOffsetY;
-  } else if (terminal.row < terminal.height - 1) {
-    ++terminal.row;
+export function down(state: State, row: number, col: number) {
+  const rowWithOffset = row + state.screenOffsetY;
+
+  if (row === state.height) return;
+
+  if (state.length[rowWithOffset + 1] < col || col >= state.rowLength) {
+    state.pos += state.rowLength - col + state.length[rowWithOffset + 1] - 1;
+  } else {
+    state.pos += state.rowLength;
   }
 }
 
-export function up(terminal: Terminal) {
-  if (terminal.screenOffsetY === 0 && terminal.row === 0) return;
-  if (
-    terminal.col >=
-    terminal.text.slice(terminal.screenOffsetY)[terminal.row].length
-  ) {
-    terminal.col = terminal.text.slice(terminal.screenOffsetY)[
-      terminal.row - 1
-    ].length;
+export function up(state: State, row: number, col: number) {
+  const rowWithOffset = row + state.screenOffsetY;
+
+  if (state.screenOffsetY === 0 && row === 0) return;
+  if (col >= state.rowLength) {
+    state.pos -= col + 1;
+  } else {
+    state.pos -= state.length[row - 1];
   }
-  if (terminal.screenOffsetY > 0) {
-    --terminal.screenOffsetY;
-  } else if (terminal.row > 0) {
-    --terminal.row;
+  if (state.screenOffsetY > 0) {
+    --state.screenOffsetY;
   }
 }
 
-export function left(terminal: Terminal) {
-  if (terminal.col === 0) {
-    return up(terminal);
-  }
+export function left(state: State, row: number, col: number) {
+  if (state.pos === 1) return;
 
-  --terminal.col;
+  --state.pos;
 }
 
-export function right(terminal: Terminal) {
-  if (
-    terminal.col ===
-    terminal.text.slice(terminal.screenOffsetY)[terminal.row].length
-  ) {
-    return down(terminal);
-  }
+export function right(state: State, row: number, col: number) {
+  if (state.pos === state.maxPos) return;
 
-  ++terminal.col;
+  ++state.pos;
 }

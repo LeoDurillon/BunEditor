@@ -2,50 +2,42 @@ import ActionString from "../bindings/action";
 import * as Action from "../services/action";
 import * as Move from "../services/move";
 import Cursor from "./Cursor";
-import Program from "./Program";
+import type Program from "./Program";
+import State from "./State";
 export default class Terminal {
   public mode: "visual" | "select" | "insert";
-  public col: number;
-  public row: number;
-  public screenOffsetX: number;
-  public screenOffsetY: number;
-  public width: number;
-  public height: number;
   public cursor: Cursor;
+
+  public selection: string;
+  public state: State;
 
   constructor(
     public write: (value: string) => void,
-    public text: string[][],
+    public text: Buffer,
     public program: Program
   ) {
-    this.col = 0;
-    this.row = Math.floor((process.stdout.rows - 3) / 2);
     this.mode = "visual";
-    this.screenOffsetX = 0;
-    this.screenOffsetY = 0;
-    this.width = process.stdout.columns - 3;
-    this.height = process.stdout.rows - 3;
-    this.cursor = new Cursor(this.col, this.row);
+
+    this.cursor = new Cursor(0, 0);
     this.cursor.clear();
+
+    this.selection = "";
+    this.state = new State(this);
   }
 
-  draw(init: boolean = false) {
+  draw() {
     this.cursor.clear();
     this.cursor.hide();
-    for (let row = 0; row < this.height; row++) {
-      this.write("\n");
-      for (let col = 0; col < this.width; col++) {
-        if (!this.text.slice(this.screenOffsetY)[row]) return;
-        this.write(
-          this.text.slice(this.screenOffsetY)[row].slice(this.screenOffsetX)[
-            col
-          ] ?? ""
-        );
-      }
+    const text = this.text.toString().split("\n");
+
+    for (let i = 0; i < this.state.height; i++) {
+      this.write(text[i] + "\n");
     }
+
     this.write("\n");
     this.write("Mode:" + this.mode);
-    this.cursor.move(this.col, this.row + 1);
+    this.cursor.posCalc(this.state.pos, this.state.length);
+    this.state.update(this);
     this.cursor.show();
   }
 
@@ -77,29 +69,21 @@ export default class Terminal {
   }
 
   insert(key: string) {
+    this.text = Buffer.from(
+      this.text.toString().slice(0, this.state.pos) +
+        key +
+        this.text.toString().slice(this.state.pos)
+    );
+
     switch (key) {
-      case "\r": {
-        this.text = [
-          ...this.text.slice(0, this.row + this.screenOffsetY),
-          [],
-          ...this.text.slice(this.row + this.screenOffsetY),
-        ];
+      case "\n": {
         this.move("down");
       }
       default: {
-        const text = this.text.slice(this.screenOffsetY)[this.row];
-        if (this.col === text.length) {
-          this.text.slice(this.screenOffsetY)[this.row].push(key);
-        } else {
-          this.text[this.row + this.screenOffsetY] = [
-            ...text.slice(0, this.col),
-            key,
-            ...text.slice(this.col),
-          ];
-        }
         this.move("right");
       }
     }
+
     this.draw();
   }
 
@@ -110,17 +94,15 @@ export default class Terminal {
 
   move(dir: keyof typeof Move, redraw: boolean = false) {
     if (!(dir in Move)) return;
-    Move[dir](this);
 
-    this.cursor.move(this.col, this.row + 1);
+    Move[dir](this.state, this.cursor.posy, this.cursor.posx);
 
     this.draw();
   }
 
   action(action: keyof typeof Action) {
-    if (!(action in Action)) return;
-    Action[action](this);
-
-    this.draw();
+    // if (!(action in Action)) return;
+    // Action[action](this);
+    // this.draw();
   }
 }
