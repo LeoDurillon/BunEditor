@@ -1,4 +1,5 @@
 import ansiEscapes from "ansi-escapes";
+import State from "./State";
 
 export default class Cursor {
   constructor(public posx: number, public posy: number) {
@@ -31,18 +32,21 @@ export default class Cursor {
     return this.set();
   }
 
-  posCalc(pos: number, length: number[]) {
+  posCalc(pos: number, length: number[], state: State) {
     let base = pos;
 
     for (let i = 0; i < length.length; i++) {
       if (base > 0 && base <= length[i]) {
-        this.posy = i;
+        if (i >= state.halfH && i + state.halfH < length.length) {
+          state.screenOffsetY = i - state.halfH;
+        }
+        this.posy = i - state.screenOffsetY;
+
         this.posx = base - 1;
       }
 
       base -= length[i];
     }
-
     this.set();
   }
 }

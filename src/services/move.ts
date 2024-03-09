@@ -15,14 +15,11 @@ export function down(state: State, row: number, col: number) {
 export function up(state: State, row: number, col: number) {
   const rowWithOffset = row + state.screenOffsetY;
 
-  if (state.screenOffsetY === 0 && row === 0) return;
-  if (col >= state.rowLength) {
+  if (row === 0) return;
+  if (col >= state.rowLength || state.length[rowWithOffset - 1] < col) {
     state.pos -= col + 1;
   } else {
-    state.pos -= state.length[row - 1];
-  }
-  if (state.screenOffsetY > 0) {
-    --state.screenOffsetY;
+    state.pos -= state.length[rowWithOffset - 1];
   }
 }
 

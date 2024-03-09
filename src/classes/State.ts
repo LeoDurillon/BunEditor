@@ -25,8 +25,8 @@ export default class State {
     this.width = process.stdout.columns - 3;
     this.height = process.stdout.rows - 3;
 
-    this.halfH = Math.floor(this.height / 2) - 3;
-    this.halfW = Math.floor(this.width / 2) - 3;
+    this.halfH = Math.floor(this.height / 2);
+    this.halfW = Math.floor(this.width / 2);
 
     this.rowLength = terminal.program.originalFile.split("\n")[0].length + 1;
     this.length = terminal.program.originalFile

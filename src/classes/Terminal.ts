@@ -4,6 +4,7 @@ import * as Move from "../services/move";
 import Cursor from "./Cursor";
 import type Program from "./Program";
 import State from "./State";
+
 export default class Terminal {
   public mode: "visual" | "select" | "insert";
   public cursor: Cursor;
@@ -28,15 +29,18 @@ export default class Terminal {
   draw() {
     this.cursor.clear();
     this.cursor.hide();
-    const text = this.text.toString().split("\n");
+    const text = this.text
+      .toString()
+      .split("\n")
+      .slice(this.state.screenOffsetY);
 
     for (let i = 0; i < this.state.height; i++) {
-      this.write(text[i] + "\n");
+      this.write(`${text[i] ? text[i] : ""} \n`);
     }
 
     this.write("\n");
-    this.write("Mode:" + this.mode);
-    this.cursor.posCalc(this.state.pos, this.state.length);
+    this.write("MODE:" + this.mode.toUpperCase());
+    this.cursor.posCalc(this.state.pos, this.state.length, this.state);
     this.state.update(this);
     this.cursor.show();
   }
@@ -49,8 +53,8 @@ export default class Terminal {
         case "mode": {
           if (!["visual", "select", "insert"].includes(split[1]))
             throw Error("command not recognize");
-          else
-            return this.updateMode(split[1] as "visual" | "insert" | "select");
+          else this.updateMode(split[1] as "visual" | "insert" | "select");
+          break;
         }
         case "insert": {
           this.insert(split[1]);
@@ -65,44 +69,39 @@ export default class Terminal {
           break;
         }
       }
+      this.update();
+      this.draw();
     }
   }
 
   insert(key: string) {
     this.text = Buffer.from(
-      this.text.toString().slice(0, this.state.pos) +
+      this.text.toString().slice(0, this.state.pos - 1) +
         key +
-        this.text.toString().slice(this.state.pos)
+        this.text.toString().slice(this.state.pos - 1)
     );
 
-    switch (key) {
-      case "\n": {
-        this.move("down");
-      }
-      default: {
-        this.move("right");
-      }
-    }
-
-    this.draw();
+    this.move("right");
   }
 
   updateMode(mode: "visual" | "insert" | "select") {
     this.mode = mode;
-    this.draw();
   }
 
   move(dir: keyof typeof Move, redraw: boolean = false) {
     if (!(dir in Move)) return;
 
     Move[dir](this.state, this.cursor.posy, this.cursor.posx);
+  }
 
-    this.draw();
+  update() {
+    this.state.update(this);
+    this.cursor.posCalc(this.state.pos, this.state.length, this.state);
   }
 
   action(action: keyof typeof Action) {
-    // if (!(action in Action)) return;
-    // Action[action](this);
-    // this.draw();
+    if (!(action in Action)) return;
+    Action[action](this);
+    this.draw();
   }
 }

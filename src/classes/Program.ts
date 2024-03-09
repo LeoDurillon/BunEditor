@@ -50,18 +50,19 @@ export default class Program {
   async getKey() {
     for await (const chunk of this.stream) {
       if (!this.terminal) throw Error("Terminal should exists now");
-      let value: string | number = Buffer.from(chunk).toString();
-
-      if (chunk[0] === 127) value = "_";
-      if (parseInt(value, 10)) value = parseInt(value, 10);
-      if (value in ActionKey)
-        value = ActionKey[value as keyof typeof ActionKey];
+      const value = Buffer.from(chunk).toString();
+      let result;
+      if (chunk[0] === 127) result = ActionKey["_"];
+      if (!isNaN(parseInt(value, 10))) result = parseInt(value, 10);
       if (value in SpecialKey)
-        value = SpecialKey[value as keyof typeof SpecialKey];
-      if (value in ArrowKey) value = ArrowKey[value as keyof typeof ArrowKey];
-      if (value in Letter) value = Letter[value as keyof typeof Letter];
+        result = SpecialKey[value as keyof typeof SpecialKey];
+      if (value in ArrowKey) result = ArrowKey[value as keyof typeof ArrowKey];
+      if (value in Letter) result = Letter[value as keyof typeof Letter];
+      if (value in ActionKey)
+        result = ActionKey[value as keyof typeof ActionKey];
+      if (!result) return;
 
-      this.terminal.parseKey(bindings[this.terminal.mode][value]);
+      this.terminal.parseKey(bindings[this.terminal.mode][result]);
     }
   }
 
